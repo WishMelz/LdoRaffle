@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ldo 抽奖系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/element-ui@2.15.14/lib/index.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/element-ui@2.15.14/lib/theme-chalk/index.min.css" rel="stylesheet" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@100..900&display=swap" />
+</head>
+<style>
+    #app {
+        font-family: Noto Sans SC, Avenir, Helvetica, Arial, sans-serif;
+        color: #2c3e50;
+    }
+
+    .info {
+        width: 600px;
+        margin: 0 auto;
+        margin-top: 20px;
+        border: 1px solid #ebeef5;
+        padding: 20px;
+    }
+
+    .inp {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        justify-content: center;
+        padding-bottom: 10px;
+    }
+
+    .user {
+        display: flex;
+        align-items: center;
+    }
+
+    .timer {
+        text-align: right;
+        font-size: 12px;
+    }
+
+    .user .username {
+        padding-left: 6px;
+        font-size: 18px;
+    }
+
+    .content {
+        padding-top: 10px;
+    }
+
+    .title {
+        padding-bottom: 10px;
+    }
+
+    .record .sign {
+        padding-top: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 60px;
+    }
+
+    .raffle-title {
+        padding-bottom: 10px;
+    }
+
+    .raffle .sett {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .raffle .sett>div {
+        display: flex;
+        align-items: center;
+    }
+
+    .reslist {
+        padding-top: 20px;
+    }
+
+    .reslist p {
+        margin: 0;
+    }
+
+    .reslist .res {
+        padding-bottom: 20px;
+    }
+
+    .reslist .cont {
+        padding-top: 10px;
+        overflow: hidden;
+        word-break: keep-all;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+    }
+    .resbtn {
+        text-align: right;
+    }
+</style>
+
+<body>
+    <div id="app">
+        <div class="info" v-loading="loading" :element-loading-text="loadingText">
+            <div class="inp">
+                <el-input style="width: 200px" v-model="topicCode" size="mini" placeholder="请输入内容文档ID"></el-input>
+                <el-button type="primary" size="mini" @click="getDetail()">搜索</el-button>
+            </div>
+            <div class="timer">查询日期：{{startTimer}}</div>
+            <div class="detail" v-if="posts_ids.length > 0">
+                <div class="user">
+                    <el-avatar size="small" :src="getUserAvatar(postsFirst.avatar_template)"></el-avatar>
+                    <span class="username">{{postsFirst.name}}</span>
+                </div>
+                <div class="content">
+                    <div class="title">
+                        {{detail.title}}
+                    </div>
+                    <div class="tags">
+                        <el-tag size="mini" v-for="tag in tags" :key="tag">{{tag}}</el-tag>
+                    </div>
+                </div>
+                <el-divider></el-divider>
+                <div class="record">
+                    <div class="tips">
+                        截止您查询的时间：
+                        <b>{{startTimer}}</b> ，有如下数据:
+                    </div>
+                    <div class='sign'>
+                        <span>
+                            <el-statistic group-separator="," :value="posts_count" title="评论总数">
+                                <template slot="prefix">
+                                    <i class="el-icon-s-comment" style="color:red"></i>
+                        </span>
+                        </template>
+                        </el-statistic>
+                        </span>
+                        <span>
+                            <el-statistic group-separator="," :value="likes_count" title="点赞总数">
+                                <template slot="prefix">
+                                    <i class="el-icon-star-on" style="color:red"></i>
+                        </span>
+                        </template>
+                        </el-statistic>
+                        </span>
+                    </div>
+                </div>
+                <el-divider></el-divider>
+                <div class='raffle'>
+                    <div class="raffle-title"> 抽奖设置： </div>
+                    <div class="sett">
+                        <div>
+                            <span class="label">类型：</span>
+                            <el-select style="width:100px" v-model="raffleType" size="mini">
+                                <el-option label="抽评论" value="1"></el-option>
+                                <el-option disabled label="抽点赞（待开发）" value="2"></el-option>
+                                <el-option disabled label="评论+点赞（待开发）" value="3"></el-option>
+                            </el-select>
+                        </div>
+                        <div>
+                            <span class="label">个数：</span>
+                            <el-input-number size="mini" v-model="raffleNum"></el-input-number>
+                        </div>
+
+                        <el-button type="primary" size="mini" @click="startRaffle()">开始抽奖</el-button>
+                    </div>
+
+                    <div class='reslist' v-if="resultList.length > 0">
+                        <div class="raffle-title"> 抽奖结果： </div>
+                        <div class="res" v-for="item in resultList" :key="item.id">
+                            <div class="user">
+                                <el-avatar size="small" :src="getUserAvatar(item.avatar_template)"></el-avatar>
+                                <span class="username">{{item.name}}
+                                    <el-tag size="mini" type="success">@{{item.username}}</el-tag>
+                                </span>
+                            </div>
+                            <div class="cont">
+                                <span v-html="item.cooked"></span>
+                            </div>
+                        </div>
+                        <div class='resbtn'>
+                            <el-button size="mini" @click="copyResult()">复制中奖信息</el-button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</body>
+
+<script>
+    new Vue({
+        data: {
+            baseUrl: "https://black-night-b944.wishs.workers.dev",
+            loading: false,
+            loadingText: '',
+            topicCode: '',
+            raffleType: "1", // 1评论 2点赞 3混合
+            raffleNum: 1, //抽奖个数
+            startTimer: "",
+            detail: {}, //文章详情
+            tags: [],
+            posts_count: 0, //评论总数
+            likes_count: 0, //点赞总数
+            posts_ids: [], //评论ID
+            likes_list: [], //点赞列表
+            linkFirstId: 0, //文章第一个id
+            postsFirst: {}, //第一个评论
+
+            resultList: [] // 抽奖结果
+        },
+        created() {
+
+        },
+        methods: {
+            copyResult(){
+                let copyStr = ''
+                this.resultList.forEach(item => {
+                    copyStr += `@${item.username} ${item.name}\n`
+                })
+                navigator.clipboard.writeText(copyStr).then(() => {
+                    this.$message.success('复制成功');
+                }).catch(err => {
+                    this.$message.error('复制失败');
+                });
+            },
+            getUserAvatar(url) {
+                return 'https://linux.do/' + url?.replace("{size}", 48);
+            },
+            formatDate(inputDate) {
+                const date = inputDate ? new Date(inputDate) : new Date();
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0'); 
+                const day = String(date.getDate()).padStart(2, '0');
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                const seconds = String(date.getSeconds()).padStart(2, '0');
+                return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+            },
+            getDetail() {
+                if(this.topicCode == '') {
+                    this.$message.error('请输入话题ID')
+                    return
+                }
+                this.loading = true
+                fetch(`${this.baseUrl}/getCom?t=${this.topicCode}`)
+                    .then(res => res.json())
+                    .then(res => {
+                        this.loading = false
+                        this.startTimer = this.formatDate()
+                        this.detail = res
+                        this.tags = res.tags
+                        this.posts_count = res.posts_count
+                        this.posts_ids = res.post_stream.stream
+                        this.linkFirstId = res.post_stream.stream[0]
+                        this.postsFirst = res.post_stream.posts[0]
+                        this.getLikeList()
+                    }).catch(err => {
+                        this.loading = false
+                        this.$message.error(err)
+                        console.log(err)
+                    })
+
+            },
+            getLikeList() {
+                fetch(`${this.baseUrl}/getLike?t=${this.linkFirstId}`)
+                    .then(res => res.json())
+                    .then(res => {
+                        let cunt = 0
+                        res.reaction_users.map(v => {
+                            cunt = cunt += v.count
+                        })
+                        this.likes_count = cunt
+                    }).catch(err => {
+                        this.$message.error(err)
+                        console.log(err)
+                    })
+            },
+            startRaffle() {
+                if (this.raffleNum > this.posts_ids.length) {
+                    this.$message.error('抽奖个数不能大于评论总数');
+                    return
+                }
+
+                this.loading = true;
+                this.loadingText = '抽奖中...';
+                let clone = JSON.parse(JSON.stringify(this.posts_ids));
+                // 打乱数组
+                for (let i = clone.length - 1; i > 0; i--) {
+                    let j = Math.floor(Math.random() * (i + 1));
+                    [clone[i], clone[j]] = [clone[j], clone[i]];
+                }
+
+                let result = [];
+                for (let i = 0; i < this.raffleNum; i++) {
+                    let index = Math.floor(Math.random() * clone.length);
+                    result.push(clone.splice(index, 1)[0]);
+                }
+                this.loadingText = '正在获取抽奖结果...';
+                fetch(`${this.baseUrl}/getComUser?t=${this.topicCode}&ids=${result.join(',')}`)
+                    .then(res => res.json())
+                    .then(res => {
+                        this.loadingText = ''
+                        this.loading = false
+                        this.resultList = res.post_stream.posts;
+                    }).catch(err => {
+                        this.loadingText = ''
+                    })
+
+            }
+        }
+    }).$mount('#app')
+</script>
+</html>
