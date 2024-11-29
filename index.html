@@ -99,6 +99,10 @@
         word-break: keep-all;
         white-space: nowrap;
         text-overflow: ellipsis;
+        max-height: 50px;
+    }
+    .reslist .cont aside{
+        display: none;
     }
     .resbtn {
         text-align: right;
@@ -178,11 +182,11 @@
                                 <el-avatar size="small" :src="getUserAvatar(item.avatar_template)"></el-avatar>
                                 <span class="username">{{item.name}}
                                     <el-tag size="mini" type="success">@{{item.username}}</el-tag>
-                                     <el-tag size="mini" type="info">#{{item.post_number}}</el-tag>
+                                    <el-tag size="mini" type="info">#{{item.post_number}}</el-tag>
                                 </span>
                             </div>
-                            <div class="cont">
-                                <span v-html="item.cooked"></span>
+                            <div class="cont" v-html="item.cooked">
+                                <!-- <span ></span> -->
                             </div>
                         </div>
                         <div class='resbtn'>
@@ -319,4 +323,5 @@
         }
     }).$mount('#app')
 </script>
+
 </html>
